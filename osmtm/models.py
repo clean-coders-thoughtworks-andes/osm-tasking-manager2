@@ -55,7 +55,7 @@ from sqlalchemy.orm import (
 
 from .utils import (
     TileBuilder,
-    get_tiles_in_geom,
+    get_tiles_in_geometry,
     max,
     parse_geojson,
 )
@@ -578,7 +578,7 @@ class Project(Base, Translatable):
         geom_3857 = shape.to_shape(geom_3857)
 
         tasks = []
-        for i in get_tiles_in_geom(geom_3857, zoom):
+        for i in get_tiles_in_geometry(geom_3857, zoom):
             multi = MultiPolygon([i[2]])
             geometry = ST_Transform(shape.from_shape(multi, 3857), 4326)
             tasks.append(Task(i[0], i[1], zoom, geometry))

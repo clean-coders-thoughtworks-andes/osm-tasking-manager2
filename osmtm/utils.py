@@ -3,7 +3,7 @@ import ConfigParser
 import geojson
 import shapely
 from shapely.geometry import Polygon
-from shapely.prepared import prep
+from shapely.prepared import create_prepared_geometry_object
 from math import floor, ceil
 
 
@@ -12,6 +12,30 @@ MAXRESOLUTION = 156543.0339
 
 # X/Y axis limit
 max = MAXRESOLUTION * 256 / 2
+
+
+class ZoomStepCalculator:
+
+    def __init__(self, shape, zoom_level):
+        self.step = _get_tile_size_in_meters_at_required(zoom_level)
+        self.shape = shape
+
+        self.minimum_x = int(floor((self._get_minimum_x() + max) / self.step))
+        self.maximum_x = int(ceil((self._get_maximum_x() + max) / self.step))
+        self.minimum_y = int(floor((self._get_minimum_y() + max) / self.step))
+        self.maximum_y = int(ceil((self._get_maximum_y() + max) / self.step))
+
+    def _get_maximum_y(self):
+        return self.shape.bounds[3]
+
+    def _get_maximum_x(self):
+        return self.shape.bounds[2]
+
+    def _get_minimum_y(self):
+        return self.shape.bounds[1]
+
+    def _get_minimum_x(self):
+        return self.shape.bounds[0]
 
 
 class TileBuilder(object):
@@ -30,29 +54,25 @@ class TileBuilder(object):
 
 # This method finds the tiles that intersect the given geometry for the given
 # zoom
-def get_tiles_in_geom(geom, z):
-    xmin = geom.bounds[0]
-    ymin = geom.bounds[1]
-    xmax = geom.bounds[2]
-    ymax = geom.bounds[3]
+def get_tiles_in_geometry(shape, zoom_level):
+    step_coordinates = ZoomStepCalculator(shape, zoom_level)
+    tb = TileBuilder(step_coordinates.step)
+    return _calculate_tiles(shape, step_coordinates, tb)
 
-    # tile size (in meters) at the required zoom level
-    step = max / (2 ** (z - 1))
 
-    xminstep = int(floor((xmin + max) / step))
-    xmaxstep = int(ceil((xmax + max) / step))
-    yminstep = int(floor((ymin + max) / step))
-    ymaxstep = int(ceil((ymax + max) / step))
-
-    tb = TileBuilder(step)
+def _calculate_tiles(shape, step_coordinates, tb):
     tiles = []
-    prepared_geom = prep(geom)
-    for i in range(xminstep, xmaxstep + 1):
-        for j in range(yminstep, ymaxstep + 1):
+    prepared_geometry = create_prepared_geometry_object(shape)
+    for i in range(step_coordinates.minimum_x, step_coordinates.maximum_x + 1):
+        for j in range(step_coordinates.minimum_y, step_coordinates.maximum_y + 1):
             tile = tb.create_square(i, j)
-            if prepared_geom.intersects(tile):
+            if prepared_geometry.intersects(tile):
                 tiles.append((i, j, tile))
     return tiles
+
+
+def _get_tile_size_in_meters_at_required(zoom_level):
+    return max / (2 ** (zoom_level - 1))
 
 
 def load_local_settings(settings):

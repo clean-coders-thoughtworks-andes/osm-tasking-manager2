@@ -57,7 +57,7 @@ from .task import get_locked_task, add_comment, send_message
 from ..utils import (
     parse_geojson,
     convert_to_multipolygon,
-    get_tiles_in_geom,
+    get_tiles_in_geometry,
 )
 
 from user import username_to_userid
@@ -224,7 +224,7 @@ def project_grid_simulate(request):
     geom_3857 = shape.to_shape(geom_3857)
     zoom = get_zoom_for_tile_size(geom_3857, tile_size)
 
-    found = get_tiles_in_geom(geom_3857, zoom)
+    found = get_tiles_in_geometry(geom_3857, zoom)
     polygons = [i[2] for i in found]
     multi = MultiPolygon(polygons)
 
